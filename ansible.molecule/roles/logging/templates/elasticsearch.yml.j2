@@ -1,0 +1,25 @@
+cluster.name: {{ elasticsearch_cluster_name }}
+node.name: {{ elasticsearch_node_name }}
+
+path.data: {{ elasticsearch_data_dir }}
+path.logs: {{ elasticsearch_log_dir }}
+
+network.host: {{ elasticsearch_host }}
+http.port: {{ elasticsearch_port }}
+
+discovery.type: single-node
+
+{% if not elk_xpack_enabled %}
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl:
+  enabled: false
+xpack.security.transport.ssl:
+  enabled: false
+{% endif %}
+
+indices.lifecycle.rollover.alias: logs
+indices.lifecycle.rollover.pattern: "{now/d}-000001"
+indices.lifecycle.rollover.max_age: "{{ log_retention_days }}d"
+
+bootstrap.memory_lock: false

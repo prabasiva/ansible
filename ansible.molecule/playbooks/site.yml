@@ -1,0 +1,34 @@
+---
+- name: Deploy common infrastructure
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+    - role: templates
+
+- name: Deploy HAProxy servers
+  hosts: haproxy_servers
+  become: true
+  gather_facts: true
+  roles:
+    - role: haproxy
+  vars:
+    haproxy_frontends:
+      - name: web_frontend
+        bind: "*:80"
+        default_backend: web_servers
+        capture:
+          request: "header Host len 64"
+      - name: ssl_frontend
+        bind: "*:443 ssl crt {{ ssl_cert_dir }}/{{ ssl_cert_name }}.crt"
+        default_backend: web_servers
+        redirect:
+          scheme: https if !{ ssl_fc }
+
+- name: Deploy Envoy Proxy servers
+  hosts: envoy_servers
+  become: true
+  gather_facts: true
+  roles:
+    - role: envoyproxy

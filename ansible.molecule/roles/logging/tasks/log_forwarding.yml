@@ -1,0 +1,56 @@
+---
+- name: Configure rsyslog for remote logging
+  template:
+    src: 49-remote-logging.conf.j2
+    dest: /etc/rsyslog.d/49-remote-logging.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: restart rsyslog
+
+- name: Create log forwarding script
+  template:
+    src: log-forwarder.sh.j2
+    dest: /usr/local/bin/log-forwarder.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Set up log forwarding cron job
+  cron:
+    name: "Forward logs to ELK"
+    minute: "*/1"
+    job: "/usr/local/bin/log-forwarder.sh >> /var/log/log-forwarder.log 2>&1"
+    user: root
+  become: true
+
+- name: Create index patterns in Elasticsearch
+  uri:
+    url: "http://localhost:{{ elasticsearch_port }}/{{ item }}"
+    method: PUT
+    body_format: json
+    body:
+      settings:
+        number_of_shards: "{{ elasticsearch_index_shards }}"
+        number_of_replicas: "{{ elasticsearch_index_replicas }}"
+      mappings:
+        properties:
+          timestamp:
+            type: date
+          host:
+            type: keyword
+          service:
+            type: keyword
+          logtype:
+            type: keyword
+          message:
+            type: text
+  loop:
+    - "logs-haproxy"
+    - "logs-envoy"
+    - "logs-system"
+    - "logs-filebeat"
+  failed_when: false
+  register: index_creation

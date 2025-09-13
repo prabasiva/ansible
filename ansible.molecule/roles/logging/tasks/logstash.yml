@@ -1,0 +1,58 @@
+---
+- name: Install Logstash
+  apt:
+    name: logstash
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Create Logstash directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: logstash
+    group: logstash
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ logstash_config_dir }}"
+    - "{{ logstash_data_dir }}"
+    - "{{ logstash_log_dir }}"
+
+- name: Configure Logstash input
+  template:
+    src: 01-input.conf.j2
+    dest: "{{ logstash_config_dir }}/01-input.conf"
+    owner: root
+    group: logstash
+    mode: '0660'
+  become: true
+  notify: restart logstash
+
+- name: Configure Logstash filter
+  template:
+    src: 10-filter.conf.j2
+    dest: "{{ logstash_config_dir }}/10-filter.conf"
+    owner: root
+    group: logstash
+    mode: '0660'
+  become: true
+  notify: restart logstash
+
+- name: Configure Logstash output
+  template:
+    src: 30-output.conf.j2
+    dest: "{{ logstash_config_dir }}/30-output.conf"
+    owner: root
+    group: logstash
+    mode: '0660'
+  become: true
+  notify: restart logstash
+
+- name: Enable and start Logstash service
+  systemd:
+    name: logstash
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: true

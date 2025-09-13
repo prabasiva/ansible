@@ -1,0 +1,36 @@
+---
+- name: Install Kibana
+  apt:
+    name: kibana
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Configure Kibana
+  template:
+    src: kibana.yml.j2
+    dest: /etc/kibana/kibana.yml
+    owner: root
+    group: kibana
+    mode: '0660'
+    backup: yes
+  become: true
+  notify: restart kibana
+
+- name: Enable and start Kibana service
+  systemd:
+    name: kibana
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: true
+
+- name: Wait for Kibana to be ready
+  uri:
+    url: "http://localhost:{{ kibana_port }}/api/status"
+    method: GET
+    timeout: 60
+  register: kibana_health
+  until: kibana_health.status == 200
+  retries: 12
+  delay: 10

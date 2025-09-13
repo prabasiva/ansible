@@ -1,0 +1,33 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: haproxy-test
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    published_ports:
+      - 8080:80
+      - 8404:8404
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      haproxy-test:
+        haproxy_backends:
+          - name: web_servers
+            balance: roundrobin
+            option:
+              - httpchk GET /
+            servers:
+              - name: test1
+                address: "httpbin.org:80"
+                check: true
+verifier:
+  name: ansible

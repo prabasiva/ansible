@@ -1,0 +1,280 @@
+---
+- name: Failure Scenario Testing Suite
+  hosts: localhost
+  gather_facts: false
+  vars:
+    failure_test_results: []
+    
+  tasks:
+    - name: Initialize failure testing
+      debug:
+        msg: "Starting failure scenario testing suite"
+
+    - name: Failure Test 1 - HAProxy Service Stop/Start Recovery
+      block:
+        - name: Stop HAProxy service
+          systemd:
+            name: haproxy
+            state: stopped
+          delegate_to: haproxy-fail-test
+
+        - name: Wait for service to stop
+          wait_for:
+            port: 80
+            host: "{{ hostvars['haproxy-fail-test']['ansible_host'] }}"
+            state: stopped
+            timeout: 30
+          delegate_to: localhost
+          failed_when: false
+
+        - name: Start HAProxy service
+          systemd:
+            name: haproxy
+            state: started
+          delegate_to: haproxy-fail-test
+
+        - name: Verify HAProxy recovery
+          wait_for:
+            port: 80
+            host: "{{ hostvars['haproxy-fail-test']['ansible_host'] }}"
+            state: started
+            timeout: 60
+          delegate_to: localhost
+
+        - name: Record HAProxy recovery test result
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'HAProxy Service Recovery', 'status': 'PASS', 'passed': true}] }}"
+      rescue:
+        - name: Record HAProxy recovery test failure
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'HAProxy Service Recovery', 'status': 'FAIL', 'passed': false}] }}"
+
+    - name: Failure Test 2 - Envoy Service Stop/Start Recovery
+      block:
+        - name: Stop Envoy service
+          systemd:
+            name: envoy
+            state: stopped
+          delegate_to: envoy-fail-test
+
+        - name: Wait for service to stop
+          wait_for:
+            port: 8080
+            host: "{{ hostvars['envoy-fail-test']['ansible_host'] }}"
+            state: stopped
+            timeout: 30
+          delegate_to: localhost
+          failed_when: false
+
+        - name: Start Envoy service
+          systemd:
+            name: envoy
+            state: started
+          delegate_to: envoy-fail-test
+
+        - name: Verify Envoy recovery
+          wait_for:
+            port: 8080
+            host: "{{ hostvars['envoy-fail-test']['ansible_host'] }}"
+            state: started
+            timeout: 60
+          delegate_to: localhost
+
+        - name: Record Envoy recovery test result
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Envoy Service Recovery', 'status': 'PASS', 'passed': true}] }}"
+      rescue:
+        - name: Record Envoy recovery test failure
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Envoy Service Recovery', 'status': 'FAIL', 'passed': false}] }}"
+
+    - name: Failure Test 3 - Configuration Syntax Error Handling
+      block:
+        - name: Backup original HAProxy config
+          copy:
+            src: /etc/haproxy/haproxy.cfg
+            dest: /etc/haproxy/haproxy.cfg.backup
+            remote_src: yes
+          delegate_to: haproxy-fail-test
+
+        - name: Introduce syntax error
+          lineinfile:
+            path: /etc/haproxy/haproxy.cfg
+            line: "INVALID_SYNTAX_ERROR"
+            insertafter: "^global"
+          delegate_to: haproxy-fail-test
+
+        - name: Attempt to restart HAProxy with bad config
+          systemd:
+            name: haproxy
+            state: restarted
+          delegate_to: haproxy-fail-test
+          register: bad_config_restart
+          failed_when: false
+
+        - name: Restore original config
+          copy:
+            src: /etc/haproxy/haproxy.cfg.backup
+            dest: /etc/haproxy/haproxy.cfg
+            remote_src: yes
+          delegate_to: haproxy-fail-test
+
+        - name: Restart HAProxy with good config
+          systemd:
+            name: haproxy
+            state: restarted
+          delegate_to: haproxy-fail-test
+
+        - name: Record config error handling test result
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Config Error Handling', 'status': 'PASS' if bad_config_restart.failed else 'FAIL', 'passed': bad_config_restart.failed}] }}"
+      rescue:
+        - name: Record config error handling test failure
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Config Error Handling', 'status': 'FAIL', 'passed': false}] }}"
+
+    - name: Failure Test 4 - Network Partition Simulation
+      block:
+        - name: Block traffic to backend (simulate network partition)
+          iptables:
+            chain: OUTPUT
+            destination: httpbin.org
+            jump: DROP
+          delegate_to: envoy-fail-test
+          become: true
+
+        - name: Test connectivity during partition
+          uri:
+            url: "http://{{ hostvars['envoy-fail-test']['ansible_host'] }}:8080/get"
+            method: GET
+            timeout: 10
+          delegate_to: localhost
+          register: partition_test
+          failed_when: false
+
+        - name: Restore network connectivity
+          iptables:
+            chain: OUTPUT
+            destination: httpbin.org
+            jump: DROP
+            state: absent
+          delegate_to: envoy-fail-test
+          become: true
+
+        - name: Wait for connectivity restoration
+          pause:
+            seconds: 5
+
+        - name: Test connectivity after restoration
+          uri:
+            url: "http://{{ hostvars['envoy-fail-test']['ansible_host'] }}:8080/ready"
+            method: GET
+            timeout: 30
+          delegate_to: localhost
+          register: restoration_test
+          retries: 3
+          delay: 5
+
+        - name: Record network partition test result
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Network Partition Recovery', 'status': 'PASS' if restoration_test.status == 200 else 'FAIL', 'passed': restoration_test.status == 200}] }}"
+      rescue:
+        - name: Record network partition test failure
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Network Partition Recovery', 'status': 'FAIL', 'passed': false}] }}"
+
+    - name: Failure Test 5 - Resource Exhaustion (High Load)
+      block:
+        - name: Generate high load on HAProxy
+          uri:
+            url: "http://{{ hostvars['haproxy-fail-test']['ansible_host'] }}:80/"
+            method: GET
+            timeout: 5
+          delegate_to: localhost
+          register: load_test
+          failed_when: false
+          loop: "{{ range(50) | list }}"
+          async: 1
+          poll: 0
+
+        - name: Wait for load test completion
+          pause:
+            seconds: 10
+
+        - name: Check HAProxy service status after load
+          systemd:
+            name: haproxy
+          delegate_to: haproxy-fail-test
+          register: haproxy_after_load
+
+        - name: Test basic functionality after load
+          uri:
+            url: "http://{{ hostvars['haproxy-fail-test']['ansible_host'] }}:80/"
+            method: GET
+            timeout: 30
+          delegate_to: localhost
+          register: post_load_test
+
+        - name: Record load test result
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'High Load Resistance', 'status': 'PASS' if (haproxy_after_load.status.ActiveState == 'active' and post_load_test.status == 200) else 'FAIL', 'passed': (haproxy_after_load.status.ActiveState == 'active' and post_load_test.status == 200)}] }}"
+      rescue:
+        - name: Record load test failure
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'High Load Resistance', 'status': 'FAIL', 'passed': false}] }}"
+
+    - name: Failure Test 6 - Disk Space Exhaustion Simulation
+      block:
+        - name: Check available disk space
+          shell: df /tmp | tail -1 | awk '{print $4}'
+          delegate_to: haproxy-fail-test
+          register: disk_space_before
+
+        - name: Create large file to simulate disk exhaustion
+          shell: dd if=/dev/zero of=/tmp/large_file bs=1M count=100
+          delegate_to: haproxy-fail-test
+          failed_when: false
+
+        - name: Test HAProxy functionality with limited disk space
+          uri:
+            url: "http://{{ hostvars['haproxy-fail-test']['ansible_host'] }}:80/"
+            method: GET
+            timeout: 15
+          delegate_to: localhost
+          register: disk_space_test
+          failed_when: false
+
+        - name: Clean up large file
+          file:
+            path: /tmp/large_file
+            state: absent
+          delegate_to: haproxy-fail-test
+
+        - name: Record disk space test result
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Disk Space Handling', 'status': 'PASS' if disk_space_test.status == 200 else 'FAIL', 'passed': disk_space_test.status == 200}] }}"
+      rescue:
+        - name: Record disk space test failure
+          set_fact:
+            failure_test_results: "{{ failure_test_results + [{'test': 'Disk Space Handling', 'status': 'FAIL', 'passed': false}] }}"
+
+    - name: Generate Failure Test Report
+      template:
+        src: failure-test-report.html.j2
+        dest: "{{ playbook_dir }}/../logs/failure-test-report-{{ ansible_date_time.epoch }}.html"
+      delegate_to: localhost
+
+    - name: Display Failure Test Summary
+      debug:
+        msg: |
+          ====== FAILURE SCENARIO TEST SUMMARY ======
+          Total Tests: {{ failure_test_results | length }}
+          Passed: {{ failure_test_results | selectattr('passed', 'equalto', true) | list | length }}
+          Failed: {{ failure_test_results | selectattr('passed', 'equalto', false) | list | length }}
+          Success Rate: {{ ((failure_test_results | selectattr('passed', 'equalto', true) | list | length) / (failure_test_results | length) * 100) | round(2) }}%
+          
+          Failed Tests:
+          {% for test in failure_test_results | selectattr('passed', 'equalto', false) %}
+          - {{ test.test }}: {{ test.status }}
+          {% endfor %}
+          ==========================================

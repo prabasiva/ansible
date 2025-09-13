@@ -1,0 +1,26 @@
+---
+- name: Create system aliases configuration
+  template:
+    src: aliases.sh.j2
+    dest: /etc/profile.d/custom-aliases.sh
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Create bash aliases file
+  template:
+    src: bash_aliases.j2
+    dest: /etc/bash.bash_aliases
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Source aliases in bashrc
+  lineinfile:
+    path: /etc/bash.bashrc
+    line: "source /etc/bash.bash_aliases"
+    state: present
+    create: yes
+  become: true

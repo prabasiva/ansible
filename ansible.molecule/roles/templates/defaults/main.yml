@@ -1,0 +1,57 @@
+---
+# Network configuration
+network_config:
+  interfaces:
+    - name: eth0
+      dhcp4: true
+      dhcp6: false
+  dns:
+    nameservers:
+      - 8.8.8.8
+      - 8.8.4.4
+    search_domains:
+      - local
+
+# Bash prompt configuration
+bash_prompt:
+  color_enabled: true
+  show_git_branch: true
+  show_last_command_status: true
+  custom_prompt: '\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# System aliases
+system_aliases:
+  - alias: 'll'
+    command: 'ls -alF'
+  - alias: 'la'
+    command: 'ls -A'
+  - alias: 'l'
+    command: 'ls -CF'
+  - alias: 'grep'
+    command: 'grep --color=auto'
+  - alias: 'fgrep'
+    command: 'fgrep --color=auto'
+  - alias: 'egrep'
+    command: 'egrep --color=auto'
+  - alias: 'h'
+    command: 'history'
+  - alias: 'j'
+    command: 'jobs -l'
+  - alias: 'du'
+    command: 'du -kh'
+  - alias: 'df'
+    command: 'df -kTh'
+
+# Custom logrotate configurations
+logrotate_configs:
+  - name: custom-apps
+    paths:
+      - /var/log/custom/*.log
+    options:
+      - daily
+      - rotate 30
+      - compress
+      - delaycompress
+      - missingok
+      - notifempty
+      - create 644 root root

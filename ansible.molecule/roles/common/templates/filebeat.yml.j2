@@ -1,0 +1,62 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+{% for path in filebeat_paths %}
+    - {{ path }}
+{% endfor %}
+  fields:
+    logtype: system
+    environment: "{{ ansible_hostname }}"
+  fields_under_root: true
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/haproxy/*.log
+  fields:
+    logtype: haproxy
+    service: haproxy
+  fields_under_root: true
+  when:
+    exists:
+      - /var/log/haproxy
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/envoy/*.log
+  fields:
+    logtype: envoy
+    service: envoy
+  fields_under_root: true
+  when:
+    exists:
+      - /var/log/envoy
+
+output.elasticsearch:
+  hosts: ["{{ elasticsearch_host }}"]
+  index: "filebeat-{{ ansible_hostname }}-%{+yyyy.MM.dd}"
+
+setup.kibana:
+  host: "{{ kibana_host }}"
+
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - drop_event:
+      when:
+        regexp:
+          message: "^$"
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: {{ filebeat_log_dir }}
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+path.data: {{ filebeat_data_dir }}
+path.config: {{ filebeat_config_dir }}
+path.logs: {{ filebeat_log_dir }}

@@ -1,0 +1,20 @@
+---
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: true
+  listen: reload systemd
+
+- name: restart envoy
+  systemd:
+    name: "{{ envoy_service_name }}"
+    state: restarted
+  become: true
+  listen: restart envoy
+
+- name: reload envoy
+  systemd:
+    name: "{{ envoy_service_name }}"
+    state: reloaded
+  become: true
+  listen: reload envoy

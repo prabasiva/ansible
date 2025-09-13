@@ -1,0 +1,10 @@
+- Develop a local ansible development enviornment that uses molecule to create dynamic environment to test the ansible script
+- have a role that installs haproxies in ubuntu
+- have a role that installs envoyproxy in ubuntu
+- have a common role that installs cert, os patches, filebeat and etc 
+- have a template for logrotate, netlan, bash_prompt, aliash
+- have a playbook with the above roles and templates for different types of environment
+- have a different types of hosts
+- develop scenarios with happy path
+- develop failure scenarios
+- store all the logs externally to validate the testing

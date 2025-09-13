@@ -1,0 +1,79 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: Install HAProxy package
+  apt:
+    name: "{{ haproxy_package }}"
+    state: present
+  become: true
+  notify: restart haproxy
+
+- name: Create HAProxy user
+  user:
+    name: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    system: yes
+    shell: /bin/false
+    home: "{{ haproxy_chroot_dir }}"
+    create_home: no
+  become: true
+
+- name: Create HAProxy directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ haproxy_chroot_dir }}"
+    - /var/log/haproxy
+    - /etc/haproxy/ssl
+
+- name: Generate HAProxy configuration
+  template:
+    src: haproxy.cfg.j2
+    dest: "{{ haproxy_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  become: true
+  notify: 
+    - validate haproxy config
+    - restart haproxy
+
+- name: Configure rsyslog for HAProxy
+  copy:
+    content: |
+      # HAProxy log configuration
+      $ModLoad imudp
+      $UDPServerRun 514
+      $UDPServerAddress 127.0.0.1
+      local0.*    /var/log/haproxy/haproxy.log
+      & stop
+    dest: /etc/rsyslog.d/49-haproxy.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: restart rsyslog
+
+- name: Enable and start HAProxy service
+  systemd:
+    name: "{{ haproxy_service }}"
+    enabled: yes
+    state: started
+  become: true
+
+- name: Verify HAProxy is listening on configured ports
+  wait_for:
+    port: 80
+    host: 0.0.0.0
+    delay: 2
+    timeout: 30

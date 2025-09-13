@@ -1,0 +1,29 @@
+---
+- name: Create custom bash prompt configuration
+  template:
+    src: bash_prompt.sh.j2
+    dest: /etc/profile.d/custom-prompt.sh
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Configure bashrc for root
+  template:
+    src: bashrc.j2
+    dest: /root/.bashrc
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  become: true
+
+- name: Configure bashrc template for new users
+  template:
+    src: bashrc.j2
+    dest: /etc/skel/.bashrc
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  become: true

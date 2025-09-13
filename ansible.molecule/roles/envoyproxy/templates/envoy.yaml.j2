@@ -1,0 +1,9 @@
+admin:
+{{ envoy_admin | to_nice_yaml(indent=2) | indent(2, true) }}
+
+static_resources:
+  listeners:
+{{ envoy_listeners | to_nice_yaml(indent=4) | indent(4, true) }}
+
+  clusters:
+{{ envoy_clusters | to_nice_yaml(indent=4) | indent(4, true) }}

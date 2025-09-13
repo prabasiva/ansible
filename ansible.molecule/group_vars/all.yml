@@ -1,0 +1,66 @@
+---
+# Global variables for all hosts
+
+# Environment settings
+environment_type: "{{ env | default('development') }}"
+
+# Common packages to install on all hosts
+common_packages:
+  - curl
+  - wget
+  - vim
+  - htop
+  - net-tools
+  - unzip
+  - jq
+  - rsync
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# SSL Certificate settings
+ssl_cert_country: "US"
+ssl_cert_state: "California" 
+ssl_cert_city: "San Francisco"
+ssl_cert_org: "Ansible Test Lab"
+ssl_cert_email: "admin@ansible-lab.local"
+
+# Log aggregation settings
+elasticsearch_host: "{{ hostvars['log-server']['ansible_host'] }}:9200"
+kibana_host: "{{ hostvars['log-server']['ansible_host'] }}:5601"
+
+# Network configuration
+network_config:
+  interfaces:
+    - name: eth0
+      dhcp4: true
+      dhcp6: false
+  dns:
+    nameservers:
+      - 8.8.8.8
+      - 1.1.1.1
+    search_domains:
+      - ansible-lab.local
+
+# System aliases for all hosts
+system_aliases:
+  - alias: 'll'
+    command: 'ls -alF'
+  - alias: 'la' 
+    command: 'ls -A'
+  - alias: 'l'
+    command: 'ls -CF'
+  - alias: 'grep'
+    command: 'grep --color=auto'
+  - alias: 'h'
+    command: 'history'
+  - alias: 'j'
+    command: 'jobs -l'
+  - alias: 'du'
+    command: 'du -kh'
+  - alias: 'df' 
+    command: 'df -kTh'
+  - alias: 'tailf'
+    command: 'tail -f'
+  - alias: 'less'
+    command: 'less -R'

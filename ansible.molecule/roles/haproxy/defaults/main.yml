@@ -1,0 +1,68 @@
+---
+# HAProxy default configuration
+haproxy_package: haproxy
+haproxy_service: haproxy
+haproxy_config_file: /etc/haproxy/haproxy.cfg
+haproxy_stats_socket: /var/lib/haproxy/stats
+haproxy_chroot_dir: /var/lib/haproxy
+haproxy_user: haproxy
+haproxy_group: haproxy
+
+# HAProxy global settings
+haproxy_global:
+  chroot: "{{ haproxy_chroot_dir }}"
+  stats:
+    socket: "{{ haproxy_stats_socket }}"
+    level: admin
+  user: "{{ haproxy_user }}"
+  group: "{{ haproxy_group }}"
+  daemon: true
+  maxconn: 4096
+  ssl_default_bind_options: no-sslv3 no-tlsv10 no-tlsv11
+  ssl_default_bind_ciphers: ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS
+
+# HAProxy defaults
+haproxy_defaults:
+  mode: http
+  timeout:
+    connect: 5000ms
+    client: 50000ms
+    server: 50000ms
+  option:
+    - httplog
+    - dontlognull
+    - http-server-close
+    - forwardfor
+    - redispatch
+  retries: 3
+
+# HAProxy frontend configuration
+haproxy_frontends:
+  - name: web_frontend
+    bind: "*:80"
+    default_backend: web_servers
+    capture:
+      request: "header Host len 64"
+
+# HAProxy backend configuration
+haproxy_backends:
+  - name: web_servers
+    balance: roundrobin
+    option:
+      - httpchk GET /health
+    servers:
+      - name: web1
+        address: "127.0.0.1:8080"
+        check: true
+      - name: web2
+        address: "127.0.0.1:8081"
+        check: true
+
+# Stats configuration
+haproxy_stats:
+  enabled: true
+  uri: /stats
+  realm: "HAProxy Statistics"
+  auth:
+    user: admin
+    password: admin123

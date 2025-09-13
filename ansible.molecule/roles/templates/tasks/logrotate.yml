@@ -1,0 +1,18 @@
+---
+- name: Create custom logrotate configurations
+  template:
+    src: custom-logrotate.j2
+    dest: "/etc/logrotate.d/{{ item.name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  loop: "{{ logrotate_configs }}"
+  when: logrotate_configs is defined
+
+- name: Test logrotate configuration
+  command: logrotate -d /etc/logrotate.conf
+  become: true
+  register: logrotate_test
+  changed_when: false
+  failed_when: logrotate_test.rc != 0

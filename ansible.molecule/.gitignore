@@ -1,0 +1,91 @@
+# Ansible Molecule .gitignore
+
+# Python virtual environment
+ansible-molecule-env/
+venv/
+env/
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Molecule
+.molecule/
+.cache/
+.pytest_cache/
+
+# Ansible
+.ansible/
+*.retry
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.temporary/
+
+# Local configuration overrides
+local_vars.yml
+local_inventory.yml
+.env.local
+
+# SSL certificates (if generated locally)
+*.pem
+*.crt
+*.key
+*.csr
+
+# Docker volumes and data
+.docker/
+
+# Test results and reports
+test-results/
+*.xml
+*.html
+coverage/
+
+# Backup files
+*.bak
+*.backup
+*~

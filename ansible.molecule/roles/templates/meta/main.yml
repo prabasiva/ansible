@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: Ansible Development Team
+  description: System configuration templates (logrotate, netplan, bash_prompt, aliases)
+  company: Internal
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: common

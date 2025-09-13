@@ -1,0 +1,12 @@
+---
+- name: Configure netplan network settings
+  include_tasks: netplan.yml
+
+- name: Configure bash prompt
+  include_tasks: bash_prompt.yml
+
+- name: Configure system aliases
+  include_tasks: aliases.yml
+
+- name: Configure custom logrotate
+  include_tasks: logrotate.yml

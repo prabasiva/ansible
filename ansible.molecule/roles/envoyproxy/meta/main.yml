@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: Ansible Development Team
+  description: Envoy Proxy installation and configuration for Ubuntu
+  company: Internal
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: common

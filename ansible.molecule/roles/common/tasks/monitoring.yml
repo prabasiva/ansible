@@ -1,0 +1,55 @@
+---
+- name: Install monitoring tools
+  apt:
+    name:
+      - htop
+      - iotop
+      - nethogs
+      - nload
+      - sysstat
+    state: present
+  become: true
+
+- name: Configure log rotation
+  template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.d/ansible-managed
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Create monitoring scripts directory
+  file:
+    path: /usr/local/bin/monitoring
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Install system monitoring script
+  template:
+    src: system-monitor.sh.j2
+    dest: /usr/local/bin/monitoring/system-monitor.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Set up monitoring cron job
+  cron:
+    name: "System monitoring"
+    minute: "*/5"
+    job: "/usr/local/bin/monitoring/system-monitor.sh >> /var/log/system-monitor.log 2>&1"
+    user: root
+  become: true
+
+- name: Ensure log directory exists
+  file:
+    path: /var/log/monitoring
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true

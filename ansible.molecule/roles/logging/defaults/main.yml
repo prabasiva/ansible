@@ -1,0 +1,38 @@
+---
+# ELK Stack configuration
+elasticsearch_version: "8.11.0"
+kibana_version: "8.11.0"
+logstash_version: "8.11.0"
+
+# Elasticsearch settings
+elasticsearch_host: "0.0.0.0"
+elasticsearch_port: 9200
+elasticsearch_data_dir: /var/lib/elasticsearch
+elasticsearch_log_dir: /var/log/elasticsearch
+elasticsearch_heap_size: "1g"
+elasticsearch_cluster_name: "ansible-test-cluster"
+elasticsearch_node_name: "{{ inventory_hostname }}"
+
+# Kibana settings
+kibana_host: "0.0.0.0"
+kibana_port: 5601
+kibana_server_name: "{{ inventory_hostname }}"
+kibana_elasticsearch_url: "http://localhost:9200"
+
+# Logstash settings
+logstash_host: "0.0.0.0"
+logstash_port: 5044
+logstash_config_dir: /etc/logstash/conf.d
+logstash_data_dir: /var/lib/logstash
+logstash_log_dir: /var/log/logstash
+
+# Security settings
+elk_security_enabled: false
+elk_xpack_enabled: false
+
+# Index settings
+elasticsearch_index_replicas: 0
+elasticsearch_index_shards: 1
+
+# Log retention
+log_retention_days: 30

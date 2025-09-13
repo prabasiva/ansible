@@ -1,0 +1,77 @@
+filter {
+  if "haproxy" in [tags] {
+    grok {
+      match => { 
+        "message" => "%{HAPROXYHTTP}"
+      }
+    }
+    
+    date {
+      match => [ "haproxy_timestamp", "dd/MMM/yyyy:HH:mm:ss.SSS" ]
+    }
+    
+    mutate {
+      convert => {
+        "actconn" => "integer"
+        "beconn" => "integer"
+        "srvconn" => "integer"
+        "retries" => "integer"
+        "srv_queue" => "integer"
+        "backend_queue" => "integer"
+      }
+      add_field => { "service" => "haproxy" }
+    }
+  }
+  
+  if "envoy" in [tags] {
+    grok {
+      match => { 
+        "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\] \"%{WORD:method} %{URIPATH:path} %{DATA:protocol}\" %{INT:response_code} %{DATA:response_flags} %{INT:bytes_received} %{INT:bytes_sent} %{INT:duration} %{DATA:upstream_service_time} \"%{DATA:forwarded_for}\" \"%{DATA:user_agent}\" \"%{DATA:request_id}\" \"%{DATA:authority}\" \"%{DATA:upstream_host}\""
+      }
+    }
+    
+    date {
+      match => [ "timestamp", "ISO8601" ]
+    }
+    
+    mutate {
+      convert => {
+        "response_code" => "integer"
+        "bytes_received" => "integer"
+        "bytes_sent" => "integer"
+        "duration" => "integer"
+      }
+      add_field => { "service" => "envoy" }
+    }
+  }
+  
+  if [type] == "syslog" {
+    grok {
+      match => { 
+        "message" => "%{SYSLOGTIMESTAMP:timestamp} %{IPORHOST:host} %{DATA:program}: %{GREEDYDATA:message}"
+      }
+      overwrite => [ "message" ]
+    }
+    
+    date {
+      match => [ "timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+    }
+    
+    mutate {
+      add_field => { "service" => "system" }
+    }
+  }
+  
+  # Add common fields
+  mutate {
+    add_field => {
+      "environment" => "{{ environment_type | default('development') }}"
+      "logtype" => "%{service}"
+    }
+  }
+  
+  # Remove unnecessary fields
+  mutate {
+    remove_field => [ "agent", "ecs", "input", "log" ]
+  }
+}

@@ -1,0 +1,36 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: Install Java (required for ELK stack)
+  apt:
+    name: openjdk-11-jre-headless
+    state: present
+  become: true
+
+- name: Add Elastic repository key
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+  become: true
+
+- name: Add Elastic repository
+  apt_repository:
+    repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+  become: true
+
+- name: Include Elasticsearch tasks
+  include_tasks: elasticsearch.yml
+
+- name: Include Kibana tasks
+  include_tasks: kibana.yml
+
+- name: Include Logstash tasks
+  include_tasks: logstash.yml
+
+- name: Configure log collection and forwarding
+  include_tasks: log_forwarding.yml

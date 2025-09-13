@@ -1,0 +1,27 @@
+---
+- name: restart filebeat
+  systemd:
+    name: filebeat
+    state: restarted
+  become: true
+  listen: restart filebeat
+
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+  become: true
+  listen: restart fail2ban
+
+- name: restart ssh
+  systemd:
+    name: ssh
+    state: restarted
+  become: true
+  listen: restart ssh
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: true
+  listen: reload systemd

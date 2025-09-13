@@ -1,0 +1,112 @@
+---
+- name: Install security packages
+  apt:
+    name:
+      - ufw
+      - fail2ban
+    state: present
+  become: true
+  when: ufw_enabled or fail2ban_enabled
+
+- name: Configure UFW firewall
+  block:
+    - name: Reset UFW to defaults
+      ufw:
+        state: reset
+      become: true
+
+    - name: Set UFW default policies
+      ufw:
+        policy: "{{ item.policy }}"
+        direction: "{{ item.direction }}"
+      become: true
+      loop:
+        - { direction: 'incoming', policy: 'deny' }
+        - { direction: 'outgoing', policy: 'allow' }
+
+    - name: Allow SSH
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+      become: true
+
+    - name: Allow HTTP
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+      become: true
+
+    - name: Allow HTTPS
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+      become: true
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+      become: true
+  when: ufw_enabled
+
+- name: Configure Fail2Ban
+  block:
+    - name: Create Fail2Ban jail.local
+      template:
+        src: jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
+      notify: restart fail2ban
+
+    - name: Enable and start Fail2Ban
+      systemd:
+        name: fail2ban
+        enabled: yes
+        state: started
+      become: true
+  when: fail2ban_enabled
+
+- name: Secure SSH configuration
+  block:
+    - name: Backup original SSH config
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.backup
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0600'
+      become: true
+
+    - name: Configure SSH security settings
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      become: true
+      loop:
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication {{ "no" if ssh_key_only else "yes" }}' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+        - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
+      notify: restart ssh
+
+- name: Set file permissions for sensitive files
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  become: true
+  loop:
+    - { path: '/etc/passwd', mode: '0644' }
+    - { path: '/etc/shadow', mode: '0640', group: 'shadow' }
+    - { path: '/etc/group', mode: '0644' }
+    - { path: '/etc/gshadow', mode: '0640', group: 'shadow' }

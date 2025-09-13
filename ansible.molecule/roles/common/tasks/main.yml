@@ -1,0 +1,29 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+  become: true
+
+- name: Include OS patching tasks
+  include_tasks: os_patching.yml
+  when: auto_update_enabled
+
+- name: Include SSL certificate tasks
+  include_tasks: ssl_certs.yml
+
+- name: Include Filebeat tasks
+  include_tasks: filebeat.yml
+
+- name: Include security hardening tasks
+  include_tasks: security.yml
+
+- name: Include monitoring tasks
+  include_tasks: monitoring.yml
+  when: monitoring_enabled

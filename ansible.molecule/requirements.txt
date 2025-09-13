@@ -1,0 +1,33 @@
+# Ansible Molecule Development Environment Requirements
+# Install with: pip install -r requirements.txt
+
+# Core Ansible and Molecule
+ansible>=6.0.0
+molecule>=4.0.0
+molecule[docker]
+molecule-plugins[docker]
+
+# Testing and validation
+pytest-testinfra>=7.0.0
+ansible-lint>=6.0.0
+
+# Docker and container support
+docker>=6.0.0
+requests>=2.28.0
+
+# Additional useful packages
+jmespath>=1.0.0
+netaddr>=0.8.0
+passlib>=1.7.4
+
+# YAML and JSON processing
+PyYAML>=6.0
+jinja2>=3.0.0
+
+# Development and debugging
+pyyaml-include>=1.3.0
+yamllint>=1.28.0
+
+# Cryptographic support for SSL/TLS
+cryptography>=3.4.8
+pyOpenSSL>=22.0.0

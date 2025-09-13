@@ -1,0 +1,38 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+{% for interface in network_config.interfaces %}
+    {{ interface.name }}:
+{% if interface.dhcp4 is defined %}
+      dhcp4: {{ interface.dhcp4 | lower }}
+{% endif %}
+{% if interface.dhcp6 is defined %}
+      dhcp6: {{ interface.dhcp6 | lower }}
+{% endif %}
+{% if interface.addresses is defined %}
+      addresses:
+{% for address in interface.addresses %}
+        - {{ address }}
+{% endfor %}
+{% endif %}
+{% if interface.gateway4 is defined %}
+      gateway4: {{ interface.gateway4 }}
+{% endif %}
+{% if interface.gateway6 is defined %}
+      gateway6: {{ interface.gateway6 }}
+{% endif %}
+{% endfor %}
+{% if network_config.dns is defined %}
+  dns:
+    nameservers:
+{% for nameserver in network_config.dns.nameservers %}
+      - {{ nameserver }}
+{% endfor %}
+{% if network_config.dns.search_domains is defined %}
+    search:
+{% for domain in network_config.dns.search_domains %}
+      - {{ domain }}
+{% endfor %}
+{% endif %}
+{% endif %}

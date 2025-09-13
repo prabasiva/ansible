@@ -1,0 +1,68 @@
+global
+    chroot {{ haproxy_global.chroot }}
+    stats socket {{ haproxy_global.stats.socket }} level {{ haproxy_global.stats.level }}
+    user {{ haproxy_global.user }}
+    group {{ haproxy_global.group }}
+{% if haproxy_global.daemon %}
+    daemon
+{% endif %}
+    maxconn {{ haproxy_global.maxconn }}
+    
+    # SSL Configuration
+    ssl-default-bind-options {{ haproxy_global.ssl_default_bind_options }}
+    ssl-default-bind-ciphers {{ haproxy_global.ssl_default_bind_ciphers }}
+    
+    # Logging
+    log 127.0.0.1:514 local0
+
+defaults
+    mode {{ haproxy_defaults.mode }}
+    timeout connect {{ haproxy_defaults.timeout.connect }}
+    timeout client {{ haproxy_defaults.timeout.client }}
+    timeout server {{ haproxy_defaults.timeout.server }}
+    retries {{ haproxy_defaults.retries }}
+    
+{% for option in haproxy_defaults.option %}
+    option {{ option }}
+{% endfor %}
+
+{% for frontend in haproxy_frontends %}
+frontend {{ frontend.name }}
+    bind {{ frontend.bind }}
+{% if frontend.capture is defined %}
+    capture {{ frontend.capture.request }}
+{% endif %}
+    default_backend {{ frontend.default_backend }}
+{% if frontend.acl is defined %}
+{% for acl in frontend.acl %}
+    acl {{ acl }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+
+{% for backend in haproxy_backends %}
+backend {{ backend.name }}
+    balance {{ backend.balance }}
+{% if backend.option is defined %}
+{% for option in backend.option %}
+    option {{ option }}
+{% endfor %}
+{% endif %}
+{% for server in backend.servers %}
+    server {{ server.name }} {{ server.address }}{% if server.check %} check{% endif %}{% if server.backup %} backup{% endif %}
+{% endfor %}
+
+{% endfor %}
+
+{% if haproxy_stats.enabled %}
+listen stats
+    bind *:8404
+    stats enable
+    stats uri {{ haproxy_stats.uri }}
+    stats realm "{{ haproxy_stats.realm }}"
+    stats auth {{ haproxy_stats.auth.user }}:{{ haproxy_stats.auth.password }}
+    stats refresh 30s
+    stats show-node
+    stats show-legends
+{% endif %}

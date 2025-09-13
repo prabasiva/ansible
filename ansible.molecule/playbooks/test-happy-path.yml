@@ -1,0 +1,158 @@
+---
+- name: Happy Path Test Suite
+  hosts: localhost
+  gather_facts: false
+  vars:
+    test_results: []
+    
+  tasks:
+    - name: Test 1 - Basic HAProxy Health Check
+      uri:
+        url: "http://{{ hostvars['haproxy-01']['ansible_host'] }}:80/"
+        method: GET
+        timeout: 30
+        status_code: 200
+      register: haproxy_basic_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Record HAProxy basic test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'HAProxy Basic Health', 'status': haproxy_basic_test.status|default('FAIL'), 'passed': haproxy_basic_test.status == 200}] }}"
+
+    - name: Test 2 - HAProxy Stats Interface
+      uri:
+        url: "http://{{ hostvars['haproxy-01']['ansible_host'] }}:8404/stats"
+        method: GET
+        user: admin
+        password: admin123
+        force_basic_auth: yes
+        timeout: 10
+      register: haproxy_stats_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Record HAProxy stats test result  
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'HAProxy Stats Interface', 'status': haproxy_stats_test.status|default('FAIL'), 'passed': haproxy_stats_test.status == 200}] }}"
+
+    - name: Test 3 - Direct Envoy Health Check
+      uri:
+        url: "http://{{ hostvars['envoy-01']['ansible_host'] }}:8080/ready"
+        method: GET
+        timeout: 10
+      register: envoy_health_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Record Envoy health test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'Envoy Health Check', 'status': envoy_health_test.status|default('FAIL'), 'passed': envoy_health_test.status == 200}] }}"
+
+    - name: Test 4 - Envoy Admin Interface
+      uri:
+        url: "http://{{ hostvars['envoy-01']['ansible_host'] }}:9901/ready"
+        method: GET
+        timeout: 10
+      register: envoy_admin_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Record Envoy admin test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'Envoy Admin Interface', 'status': envoy_admin_test.status|default('FAIL'), 'passed': envoy_admin_test.status == 200}] }}"
+
+    - name: Test 5 - End-to-End Proxy Chain
+      uri:
+        url: "http://{{ hostvars['haproxy-01']['ansible_host'] }}:80/get"
+        method: GET
+        timeout: 30
+      register: e2e_proxy_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Record end-to-end test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'End-to-End Proxy Chain', 'status': e2e_proxy_test.status|default('FAIL'), 'passed': e2e_proxy_test.status == 200}] }}"
+
+    - name: Test 6 - Load Balancing (Multiple Requests)
+      uri:
+        url: "http://{{ hostvars['haproxy-01']['ansible_host'] }}:80/get"
+        method: GET
+        timeout: 10
+      register: load_balance_test
+      failed_when: false
+      delegate_to: localhost
+      loop: "{{ range(5) | list }}"
+
+    - name: Record load balancing test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'Load Balancing (5 requests)', 'status': 'PASS' if load_balance_test.results | selectattr('status', 'equalto', 200) | list | length == 5 else 'FAIL', 'passed': load_balance_test.results | selectattr('status', 'equalto', 200) | list | length == 5}] }}"
+
+    - name: Test 7 - HAProxy Configuration Validation
+      command: haproxy -f /etc/haproxy/haproxy.cfg -c
+      register: haproxy_config_test
+      failed_when: false
+      delegate_to: "{{ groups['haproxy_servers'][0] }}"
+
+    - name: Record HAProxy config test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'HAProxy Config Validation', 'status': 'PASS' if haproxy_config_test.rc == 0 else 'FAIL', 'passed': haproxy_config_test.rc == 0}] }}"
+
+    - name: Test 8 - Envoy Configuration Validation
+      uri:
+        url: "http://{{ hostvars['envoy-01']['ansible_host'] }}:9901/config_dump"
+        method: GET
+        timeout: 10
+      register: envoy_config_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Record Envoy config test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'Envoy Config Validation', 'status': envoy_config_test.status|default('FAIL'), 'passed': envoy_config_test.status == 200}] }}"
+
+    - name: Test 9 - SSL Certificate Verification
+      stat:
+        path: "/etc/ssl/certs/{{ hostvars['haproxy-01']['ssl_cert_name'] | default(hostvars['haproxy-01']['inventory_hostname']) }}.crt"
+      register: ssl_cert_test
+      delegate_to: "{{ groups['haproxy_servers'][0] }}"
+
+    - name: Record SSL certificate test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'SSL Certificate Exists', 'status': 'PASS' if ssl_cert_test.stat.exists else 'FAIL', 'passed': ssl_cert_test.stat.exists}] }}"
+
+    - name: Test 10 - Service Persistence Check
+      systemd:
+        name: "{{ item }}"
+      register: service_persistence_test
+      loop:
+        - haproxy
+        - envoy
+      delegate_to: "{{ groups['haproxy_servers'][0] if item == 'haproxy' else groups['envoy_servers'][0] }}"
+
+    - name: Record service persistence test result
+      set_fact:
+        test_results: "{{ test_results + [{'test': 'Service Persistence (' + item.item + ')', 'status': 'PASS' if item.status.ActiveState == 'active' else 'FAIL', 'passed': item.status.ActiveState == 'active'}] }}"
+      loop: "{{ service_persistence_test.results }}"
+
+    - name: Generate Happy Path Test Report
+      template:
+        src: test-report.html.j2
+        dest: "{{ playbook_dir }}/../logs/happy-path-test-report-{{ ansible_date_time.epoch }}.html"
+      delegate_to: localhost
+
+    - name: Display Test Summary
+      debug:
+        msg: |
+          ====== HAPPY PATH TEST SUMMARY ======
+          Total Tests: {{ test_results | length }}
+          Passed: {{ test_results | selectattr('passed', 'equalto', true) | list | length }}
+          Failed: {{ test_results | selectattr('passed', 'equalto', false) | list | length }}
+          Success Rate: {{ ((test_results | selectattr('passed', 'equalto', true) | list | length) / (test_results | length) * 100) | round(2) }}%
+          
+          Failed Tests:
+          {% for test in test_results | selectattr('passed', 'equalto', false) %}
+          - {{ test.test }}: {{ test.status }}
+          {% endfor %}
+          ======================================

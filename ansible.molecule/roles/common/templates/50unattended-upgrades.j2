@@ -1,0 +1,24 @@
+Unattended-Upgrade::Allowed-Origins {
+        "${distro_id}:${distro_codename}";
+        "${distro_id}:${distro_codename}-security";
+        "${distro_id}ESMApps:${distro_codename}-apps-security";
+        "${distro_id}ESM:${distro_codename}-infra-security";
+{% if not security_updates_only %}
+        "${distro_id}:${distro_codename}-updates";
+        "${distro_id}:${distro_codename}-proposed";
+        "${distro_id}:${distro_codename}-backports";
+{% endif %}
+};
+
+Unattended-Upgrade::Package-Blacklist {
+};
+
+Unattended-Upgrade::DevRelease "auto";
+{% if auto_reboot_enabled %}
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+{% else %}
+Unattended-Upgrade::Automatic-Reboot "false";
+{% endif %}
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";

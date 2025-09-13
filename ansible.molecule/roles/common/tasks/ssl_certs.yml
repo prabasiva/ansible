@@ -1,0 +1,61 @@
+---
+- name: Install OpenSSL
+  apt:
+    name: openssl
+    state: present
+  become: true
+
+- name: Create SSL directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ ssl_cert_dir }}"
+    - "{{ ssl_key_dir }}"
+
+- name: Generate private key
+  openssl_privatekey:
+    path: "{{ ssl_key_dir }}/{{ ssl_cert_name }}.key"
+    size: "{{ ssl_key_size }}"
+    owner: root
+    group: root
+    mode: '0600'
+  become: true
+
+- name: Generate certificate signing request
+  openssl_csr:
+    path: "{{ ssl_cert_dir }}/{{ ssl_cert_name }}.csr"
+    privatekey_path: "{{ ssl_key_dir }}/{{ ssl_cert_name }}.key"
+    country_name: "{{ ssl_cert_country }}"
+    state_or_province_name: "{{ ssl_cert_state }}"
+    locality_name: "{{ ssl_cert_city }}"
+    organization_name: "{{ ssl_cert_org }}"
+    email_address: "{{ ssl_cert_email }}"
+    common_name: "{{ ssl_cert_name }}"
+  become: true
+
+- name: Generate self-signed certificate
+  openssl_certificate:
+    path: "{{ ssl_cert_dir }}/{{ ssl_cert_name }}.crt"
+    privatekey_path: "{{ ssl_key_dir }}/{{ ssl_cert_name }}.key"
+    csr_path: "{{ ssl_cert_dir }}/{{ ssl_cert_name }}.csr"
+    provider: selfsigned
+    valid_in: "{{ ssl_cert_days * 24 * 3600 }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Create certificate chain
+  copy:
+    content: |
+      {{ lookup('file', ssl_cert_dir + '/' + ssl_cert_name + '.crt') }}
+    dest: "{{ ssl_cert_dir }}/{{ ssl_cert_name }}-chain.crt"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true

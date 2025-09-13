@@ -1,0 +1,78 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: collections/requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: haproxy-fail-test
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.50
+    published_ports:
+      - 8090:80
+      - 8450:8404
+    groups:
+      - haproxy_servers
+      - proxies
+
+  - name: envoy-fail-test
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.60
+    published_ports:
+      - 8091:8080
+      - 9911:9901
+    groups:
+      - envoy_servers
+      - proxies
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      callbacks_enabled: profile_tasks, timer, yaml
+      stdout_callback: yaml
+      bin_ansible_callbacks: true
+  playbooks:
+    converge: converge.yml
+    verify: verify.yml
+  inventory:
+    group_vars:
+      all:
+        environment_type: failure_testing
+
+verifier:
+  name: ansible
+
+scenario:
+  name: failure-scenarios
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

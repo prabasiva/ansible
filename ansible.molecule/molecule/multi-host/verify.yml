@@ -1,0 +1,119 @@
+---
+- name: Verify Multi-Host Deployment
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check if all services are running
+      systemd:
+        name: "{{ item }}"
+      register: service_status
+      loop:
+        - rsyslog
+        - cron
+      failed_when: service_status.results | selectattr('status.ActiveState', 'ne', 'active') | list | length > 0
+
+- name: Verify HAProxy Servers
+  hosts: haproxy_servers
+  gather_facts: false
+  tasks:
+    - name: Check HAProxy service status
+      systemd:
+        name: haproxy
+      register: haproxy_status
+
+    - name: Verify HAProxy is listening on port 80
+      wait_for:
+        port: 80
+        host: 0.0.0.0
+        timeout: 10
+
+    - name: Verify HAProxy stats interface
+      uri:
+        url: "http://localhost:8404/stats"
+        method: GET
+        user: admin
+        password: admin123
+        force_basic_auth: yes
+      register: haproxy_stats
+
+    - name: Test HAProxy proxy functionality
+      uri:
+        url: "http://localhost:80/"
+        method: GET
+        timeout: 30
+      register: haproxy_proxy_test
+      failed_when: false
+
+    - name: Display HAProxy verification results
+      debug:
+        msg: |
+          HAProxy {{ inventory_hostname }} verification:
+          - Service active: {{ haproxy_status.status.ActiveState == 'active' }}
+          - Port 80 accessible: {{ True }}
+          - Stats accessible: {{ haproxy_stats.status == 200 }}
+          - Proxy test: {{ haproxy_proxy_test.status | default('Failed') }}
+
+- name: Verify Envoy Servers
+  hosts: envoy_servers
+  gather_facts: false
+  tasks:
+    - name: Check Envoy service status
+      systemd:
+        name: envoy
+      register: envoy_status
+
+    - name: Verify Envoy is listening on port 8080
+      wait_for:
+        port: 8080
+        host: 0.0.0.0
+        timeout: 10
+
+    - name: Verify Envoy admin interface
+      uri:
+        url: "http://localhost:9901/ready"
+        method: GET
+      register: envoy_admin
+
+    - name: Test Envoy health check endpoint
+      uri:
+        url: "http://localhost:8080/ready"
+        method: GET
+      register: envoy_health
+
+    - name: Test Envoy proxy functionality
+      uri:
+        url: "http://localhost:8080/get"
+        method: GET
+        timeout: 30
+      register: envoy_proxy_test
+      failed_when: false
+
+    - name: Display Envoy verification results
+      debug:
+        msg: |
+          Envoy {{ inventory_hostname }} verification:
+          - Service active: {{ envoy_status.status.ActiveState == 'active' }}
+          - Port 8080 accessible: {{ True }}
+          - Admin accessible: {{ envoy_admin.status == 200 }}
+          - Health check: {{ envoy_health.status == 200 }}
+          - Proxy test: {{ envoy_proxy_test.status | default('Failed') }}
+
+- name: Verify End-to-End Connectivity
+  hosts: haproxy_servers[0]
+  gather_facts: false
+  tasks:
+    - name: Test HAProxy -> Envoy connectivity
+      uri:
+        url: "http://{{ ansible_host }}:80/get"
+        method: GET
+        timeout: 30
+      register: e2e_test
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Display end-to-end test results
+      debug:
+        msg: |
+          End-to-end connectivity test:
+          - HAProxy to Envoy: {{ e2e_test.status | default('Failed') }}
+          - Full chain working: {{ e2e_test.status == 200 }}

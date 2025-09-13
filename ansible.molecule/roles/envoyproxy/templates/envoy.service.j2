@@ -1,0 +1,29 @@
+[Unit]
+Description=Envoy Proxy
+Documentation=https://www.envoyproxy.io/
+Wants=network-online.target
+After=network-online.target
+AssertFileIsExecutable=/usr/local/bin/envoy
+
+[Service]
+Type=simple
+User={{ envoy_user }}
+Group={{ envoy_group }}
+ExecStart=/usr/local/bin/envoy -c {{ envoy_config_file }}
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=envoy
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ envoy_log_dir }} {{ envoy_data_dir }}
+
+[Install]
+WantedBy=multi-user.target

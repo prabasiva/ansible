@@ -1,0 +1,45 @@
+output {
+  elasticsearch {
+    hosts => ["localhost:{{ elasticsearch_port }}"]
+    index => "logs-%{service}-%{+YYYY.MM.dd}"
+    template_name => "ansible-logs"
+    template_pattern => "logs-*"
+    template => {
+      "index_patterns" => ["logs-*"]
+      "settings" => {
+        "number_of_shards" => {{ elasticsearch_index_shards }}
+        "number_of_replicas" => {{ elasticsearch_index_replicas }}
+        "index.lifecycle.name" => "logs-policy"
+        "index.lifecycle.rollover_alias" => "logs"
+      }
+      "mappings" => {
+        "properties" => {
+          "@timestamp" => {
+            "type" => "date"
+          }
+          "host" => {
+            "type" => "keyword"
+          }
+          "service" => {
+            "type" => "keyword"
+          }
+          "logtype" => {
+            "type" => "keyword"
+          }
+          "environment" => {
+            "type" => "keyword"
+          }
+          "message" => {
+            "type" => "text"
+          }
+        }
+      }
+    }
+  }
+  
+  # Output to file for debugging
+  file {
+    path => "/var/log/logstash/debug-%{service}-%{+YYYY.MM.dd}.log"
+    codec => line { format => "[%{@timestamp}] %{host} %{service}: %{message}" }
+  }
+}

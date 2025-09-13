@@ -1,0 +1,26 @@
+input {
+  beats {
+    port => {{ logstash_port }}
+    host => "{{ logstash_host }}"
+  }
+  
+  syslog {
+    port => 514
+    host => "{{ logstash_host }}"
+    type => "syslog"
+  }
+  
+  file {
+    path => "/var/log/haproxy/*.log"
+    type => "haproxy"
+    tags => ["haproxy"]
+    start_position => "beginning"
+  }
+  
+  file {
+    path => "/var/log/envoy/*.log"
+    type => "envoy"
+    tags => ["envoy"]
+    start_position => "beginning"
+  }
+}

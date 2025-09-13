@@ -1,0 +1,33 @@
+---
+- name: Install netplan.io
+  apt:
+    name: netplan.io
+    state: present
+  become: true
+
+- name: Create netplan configuration directory
+  file:
+    path: /etc/netplan
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Configure netplan
+  template:
+    src: 01-netcfg.yaml.j2
+    dest: /etc/netplan/01-netcfg.yaml
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  become: true
+  notify: apply netplan
+
+- name: Test netplan configuration
+  command: netplan try --timeout=5
+  become: true
+  register: netplan_test
+  changed_when: false
+  failed_when: netplan_test.rc != 0

@@ -1,0 +1,26 @@
+---
+- name: validate haproxy config
+  command: haproxy -f {{ haproxy_config_file }} -c
+  become: true
+  listen: validate haproxy config
+
+- name: restart haproxy
+  systemd:
+    name: "{{ haproxy_service }}"
+    state: restarted
+  become: true
+  listen: restart haproxy
+
+- name: reload haproxy
+  systemd:
+    name: "{{ haproxy_service }}"
+    state: reloaded
+  become: true
+  listen: reload haproxy
+
+- name: restart rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+  become: true
+  listen: restart rsyslog

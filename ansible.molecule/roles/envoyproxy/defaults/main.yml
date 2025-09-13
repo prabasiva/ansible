@@ -1,0 +1,74 @@
+---
+# Envoy Proxy default configuration
+envoy_version: "1.28"
+envoy_user: envoy
+envoy_group: envoy
+envoy_config_dir: /etc/envoy
+envoy_config_file: "{{ envoy_config_dir }}/envoy.yaml"
+envoy_log_dir: /var/log/envoy
+envoy_data_dir: /var/lib/envoy
+envoy_admin_port: 9901
+envoy_listener_port: 8080
+
+# Envoy service configuration
+envoy_service_name: envoy
+envoy_systemd_unit: /etc/systemd/system/envoy.service
+
+# Envoy clusters configuration
+envoy_clusters:
+  - name: service_backend
+    connect_timeout: 30s
+    type: LOGICAL_DNS
+    dns_lookup_family: V4_ONLY
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: service_backend
+      endpoints:
+        - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: httpbin.org
+                    port_value: 80
+
+# Envoy listeners configuration
+envoy_listeners:
+  - name: listener_0
+    address:
+      socket_address:
+        protocol: TCP
+        address: 0.0.0.0
+        port_value: "{{ envoy_listener_port }}"
+    filter_chains:
+      - filters:
+          - name: envoy.filters.network.http_connection_manager
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+              stat_prefix: ingress_http
+              access_log:
+                - name: envoy.access_loggers.stdout
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+              http_filters:
+                - name: envoy.filters.http.router
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+              route_config:
+                name: local_route
+                virtual_hosts:
+                  - name: local_service
+                    domains: ["*"]
+                    routes:
+                      - match:
+                          prefix: "/"
+                        route:
+                          host_rewrite_literal: httpbin.org
+                          cluster: service_backend
+
+# Admin interface configuration
+envoy_admin:
+  address:
+    socket_address:
+      protocol: TCP
+      address: 127.0.0.1
+      port_value: "{{ envoy_admin_port }}"

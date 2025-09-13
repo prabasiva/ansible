@@ -1,0 +1,18 @@
+server.port: {{ kibana_port }}
+server.host: "{{ kibana_host }}"
+server.name: "{{ kibana_server_name }}"
+
+elasticsearch.hosts: ["{{ kibana_elasticsearch_url }}"]
+
+logging.appenders.file.type: file
+logging.appenders.file.fileName: /var/log/kibana/kibana.log
+logging.appenders.file.layout.type: json
+
+logging.root.level: warn
+
+{% if not elk_xpack_enabled %}
+xpack.security.enabled: false
+xpack.encryptedSavedObjects.encryptionKey: "{{ ansible_machine_id | default('a'.ljust(32, 'b')) }}"
+{% endif %}
+
+server.publicBaseUrl: "http://{{ kibana_host }}:{{ kibana_port }}"

@@ -1,0 +1,57 @@
+---
+- name: Add Elastic repository key
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+  become: true
+
+- name: Add Elastic repository
+  apt_repository:
+    repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+  become: true
+
+- name: Install Filebeat
+  apt:
+    name: filebeat
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Create Filebeat directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ filebeat_config_dir }}"
+    - "{{ filebeat_log_dir }}"
+    - "{{ filebeat_data_dir }}"
+
+- name: Configure Filebeat
+  template:
+    src: filebeat.yml.j2
+    dest: "{{ filebeat_config_dir }}/filebeat.yml"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+  become: true
+  notify: restart filebeat
+
+- name: Enable and start Filebeat service
+  systemd:
+    name: filebeat
+    enabled: yes
+    state: started
+  become: true
+
+- name: Test Filebeat configuration
+  command: filebeat test config -c {{ filebeat_config_dir }}/filebeat.yml
+  become: true
+  register: filebeat_test
+  changed_when: false
+  failed_when: filebeat_test.rc != 0

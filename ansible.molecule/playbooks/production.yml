@@ -1,0 +1,68 @@
+---
+- name: Production Environment Setup
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    # Production-specific variables
+    auto_reboot_enabled: true
+    security_updates_only: true
+    ufw_enabled: true
+    fail2ban_enabled: true
+    monitoring_enabled: true
+    ssh_key_only: true
+    
+  roles:
+    - role: common
+    - role: templates
+
+- name: Setup HAProxy for Production
+  hosts: haproxy_servers
+  become: true
+  gather_facts: true
+  vars:
+    haproxy_global:
+      maxconn: 8192
+      ssl_default_bind_options: no-sslv3 no-tlsv10 no-tlsv11 no-tlsv12
+    haproxy_backends:
+      - name: prod_backend
+        balance: leastconn
+        option:
+          - httpchk GET /health
+          - tcp-check
+        servers:
+          - name: prod1
+            address: "{{ hostvars['envoy-01']['ansible_host'] }}:8080"
+            check: true
+            weight: 100
+          - name: prod2
+            address: "{{ hostvars['envoy-02']['ansible_host'] }}:8080"
+            check: true
+            weight: 100
+  roles:
+    - role: haproxy
+
+- name: Setup Envoy for Production
+  hosts: envoy_servers
+  become: true
+  gather_facts: true
+  vars:
+    envoy_clusters:
+      - name: prod_service
+        connect_timeout: 10s
+        type: STRICT_DNS
+        dns_lookup_family: V4_ONLY
+        lb_policy: LEAST_REQUEST
+        load_assignment:
+          cluster_name: prod_service
+          endpoints:
+            - lb_endpoints:
+                - endpoint:
+                    address:
+                      socket_address:
+                        address: httpbin.org
+                        port_value: 80
+                    health_check_config:
+                      port_value: 80
+  roles:
+    - role: envoyproxy

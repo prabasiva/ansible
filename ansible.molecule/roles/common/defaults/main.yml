@@ -1,0 +1,58 @@
+---
+# Common role default variables
+
+# Certificate management
+ssl_cert_dir: /etc/ssl/certs
+ssl_key_dir: /etc/ssl/private
+ssl_cert_name: "{{ ansible_fqdn | default(ansible_hostname) }}"
+ssl_cert_country: "US"
+ssl_cert_state: "California"
+ssl_cert_city: "San Francisco"
+ssl_cert_org: "Development Team"
+ssl_cert_email: "admin@example.com"
+ssl_cert_days: 365
+ssl_key_size: 2048
+
+# OS patching
+auto_update_enabled: true
+auto_reboot_enabled: false
+security_updates_only: true
+
+# Filebeat configuration
+filebeat_version: "8.11.0"
+filebeat_config_dir: /etc/filebeat
+filebeat_log_dir: /var/log/filebeat
+filebeat_data_dir: /var/lib/filebeat
+elasticsearch_host: "localhost:9200"
+kibana_host: "localhost:5601"
+
+# System monitoring
+monitoring_enabled: true
+log_retention_days: 30
+
+# Security hardening
+ufw_enabled: true
+fail2ban_enabled: true
+ssh_key_only: false
+
+# Common packages
+common_packages:
+  - curl
+  - wget
+  - vim
+  - htop
+  - net-tools
+  - unzip
+  - jq
+  - rsync
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# Logging paths to monitor
+filebeat_paths:
+  - /var/log/syslog
+  - /var/log/auth.log
+  - /var/log/nginx/*.log
+  - /var/log/haproxy/*.log
+  - /var/log/envoy/*.log

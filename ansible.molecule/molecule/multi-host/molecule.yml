@@ -1,0 +1,134 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: collections/requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: haproxy-01
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.10
+    published_ports:
+      - 8080:80
+      - 8404:8404
+    groups:
+      - haproxy_servers
+      - proxies
+
+  - name: haproxy-02
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.11
+    published_ports:
+      - 8081:80
+      - 8405:8404
+    groups:
+      - haproxy_servers
+      - proxies
+
+  - name: envoy-01
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.20
+    published_ports:
+      - 8082:8080
+      - 9901:9901
+    groups:
+      - envoy_servers
+      - proxies
+
+  - name: envoy-02
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.21
+    published_ports:
+      - 8083:8080
+      - 9902:9901
+    groups:
+      - envoy_servers
+      - proxies
+
+  - name: log-server
+    image: quay.io/ansible/molecule-ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    networks:
+      - name: molecule-network
+        ipv4_address: 172.20.0.40
+    published_ports:
+      - 9200:9200
+      - 5601:5601
+    groups:
+      - logging
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      callbacks_enabled: profile_tasks, timer, yaml
+      stdout_callback: yaml
+      bin_ansible_callbacks: true
+  playbooks:
+    converge: converge.yml
+    verify: verify.yml
+  inventory:
+    group_vars:
+      all:
+        environment_type: testing
+        elasticsearch_host: "172.20.0.40:9200"
+        kibana_host: "172.20.0.40:5601"
+
+verifier:
+  name: ansible
+
+scenario:
+  name: multi-host
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

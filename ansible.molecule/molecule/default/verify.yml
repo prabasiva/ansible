@@ -1,0 +1,42 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: "Check if systemd is available"
+      command: systemctl --version
+      register: systemd_check
+      changed_when: false
+      failed_when: false
+
+    - name: "Verify common services are running"
+      systemd:
+        name: "{{ item }}"
+        state: started
+      register: service_status
+      failed_when: service_status.failed
+      loop:
+        - rsyslog
+        - cron
+      when: systemd_check.rc == 0
+
+    - name: "Check disk usage"
+      shell: df -h /
+      register: disk_usage
+      changed_when: false
+
+    - name: "Verify network connectivity"
+      uri:
+        url: "http://www.google.com"
+        method: HEAD
+        timeout: 10
+      register: network_check
+      failed_when: false
+
+    - name: "Display verification results"
+      debug:
+        msg: |
+          System verification completed:
+          - Systemd available: {{ systemd_check.rc == 0 }}
+          - Network connectivity: {{ network_check.status is defined and network_check.status == 200 }}
+          - Disk usage: {{ disk_usage.stdout_lines[1] if disk_usage.stdout_lines|length > 1 else 'Unknown' }}
