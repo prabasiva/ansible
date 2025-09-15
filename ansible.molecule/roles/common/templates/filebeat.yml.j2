@@ -7,7 +7,7 @@ filebeat.inputs:
 {% endfor %}
   fields:
     logtype: system
-    environment: "{{ ansible_hostname }}"
+    environment: "{{ inventory_hostname }}"
   fields_under_root: true
 
 - type: log
@@ -36,7 +36,10 @@ filebeat.inputs:
 
 output.elasticsearch:
   hosts: ["{{ elasticsearch_host }}"]
-  index: "filebeat-{{ ansible_hostname }}-%{+yyyy.MM.dd}"
+  index: "filebeat-{{ inventory_hostname }}-%{+yyyy.MM.dd}"
+
+setup.template.name: "filebeat-{{ inventory_hostname }}"
+setup.template.pattern: "filebeat-{{ inventory_hostname }}-*"
 
 setup.kibana:
   host: "{{ kibana_host }}"

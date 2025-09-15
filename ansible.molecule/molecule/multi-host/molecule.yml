@@ -6,19 +6,27 @@ dependency:
 
 driver:
   name: docker
+  networks:
+    - name: molecule-network
+      ipam_config:
+        - subnet: 172.20.0.0/16
 
 platforms:
   - name: haproxy-01
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
-    command: /lib/systemd/systemd
+    command: sleep infinity
+    tty: true
+    stdin_open: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+    tmpfs:
+      - /tmp:rw,exec,mode=1777
+      - /run:rw,exec,mode=1777
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.10
     published_ports:
       - 8080:80
       - 8404:8404
@@ -27,16 +35,20 @@ platforms:
       - proxies
 
   - name: haproxy-02
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
-    command: /lib/systemd/systemd
+    command: sleep infinity
+    tty: true
+    stdin_open: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+    tmpfs:
+      - /tmp:rw,exec,mode=1777
+      - /run:rw,exec,mode=1777
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.11
     published_ports:
       - 8081:80
       - 8405:8404
@@ -45,16 +57,20 @@ platforms:
       - proxies
 
   - name: envoy-01
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
-    command: /lib/systemd/systemd
+    command: sleep infinity
+    tty: true
+    stdin_open: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+    tmpfs:
+      - /tmp:rw,exec,mode=1777
+      - /run:rw,exec,mode=1777
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.20
     published_ports:
       - 8082:8080
       - 9901:9901
@@ -63,16 +79,20 @@ platforms:
       - proxies
 
   - name: envoy-02
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
-    command: /lib/systemd/systemd
+    command: sleep infinity
+    tty: true
+    stdin_open: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+    tmpfs:
+      - /tmp:rw,exec,mode=1777
+      - /run:rw,exec,mode=1777
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.21
     published_ports:
       - 8083:8080
       - 9902:9901
@@ -81,16 +101,20 @@ platforms:
       - proxies
 
   - name: log-server
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
-    command: /lib/systemd/systemd
+    command: sleep infinity
+    tty: true
+    stdin_open: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+    tmpfs:
+      - /tmp:rw,exec,mode=1777
+      - /run:rw,exec,mode=1777
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.40
     published_ports:
       - 9200:9200
       - 5601:5601
@@ -99,11 +123,17 @@ platforms:
 
 provisioner:
   name: ansible
+  connection_options:
+    ansible_connection: docker
   config_options:
     defaults:
       callbacks_enabled: profile_tasks, timer, yaml
       stdout_callback: yaml
       bin_ansible_callbacks: true
+      remote_tmp: /tmp
+      host_key_checking: False
+  env:
+    ANSIBLE_ROLES_PATH: ../../roles
   playbooks:
     converge: converge.yml
     verify: verify.yml
@@ -111,8 +141,11 @@ provisioner:
     group_vars:
       all:
         environment_type: testing
-        elasticsearch_host: "172.20.0.40:9200"
-        kibana_host: "172.20.0.40:5601"
+        elasticsearch_host: "{{ hostvars['log-server']['ansible_default_ipv4']['address'] }}:9200"
+        kibana_host: "{{ hostvars['log-server']['ansible_default_ipv4']['address'] }}:5601"
+        ansible_connection: docker
+        ansible_user: root
+        ansible_become: no
 
 verifier:
   name: ansible

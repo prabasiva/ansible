@@ -26,8 +26,8 @@ ssl_cert_org: "Ansible Test Lab"
 ssl_cert_email: "admin@ansible-lab.local"
 
 # Log aggregation settings
-elasticsearch_host: "{{ hostvars['log-server']['ansible_host'] }}:9200"
-kibana_host: "{{ hostvars['log-server']['ansible_host'] }}:5601"
+elasticsearch_host: "{{ hostvars['log-server']['ansible_host'] | default('log-server') }}:9200"
+kibana_host: "{{ hostvars['log-server']['ansible_host'] | default('log-server') }}:5601"
 
 # Network configuration
 network_config:

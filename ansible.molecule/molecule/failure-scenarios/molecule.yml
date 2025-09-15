@@ -6,10 +6,14 @@ dependency:
 
 driver:
   name: docker
+  networks:
+    - name: molecule-network
+      ipam_config:
+        - subnet: 172.20.0.0/16
 
 platforms:
   - name: haproxy-fail-test
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
     command: /lib/systemd/systemd
@@ -18,7 +22,6 @@ platforms:
     cgroupns_mode: host
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.50
     published_ports:
       - 8090:80
       - 8450:8404
@@ -27,7 +30,7 @@ platforms:
       - proxies
 
   - name: envoy-fail-test
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
     command: /lib/systemd/systemd
@@ -36,7 +39,6 @@ platforms:
     cgroupns_mode: host
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.60
     published_ports:
       - 8091:8080
       - 9911:9901

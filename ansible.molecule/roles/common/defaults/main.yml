@@ -4,7 +4,7 @@
 # Certificate management
 ssl_cert_dir: /etc/ssl/certs
 ssl_key_dir: /etc/ssl/private
-ssl_cert_name: "{{ ansible_fqdn | default(ansible_hostname) }}"
+ssl_cert_name: "{{ ansible_fqdn | default(ansible_hostname | default(inventory_hostname)) }}"
 ssl_cert_country: "US"
 ssl_cert_state: "California"
 ssl_cert_city: "San Francisco"

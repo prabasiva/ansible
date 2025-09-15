@@ -73,6 +73,11 @@
 
 - name: Secure SSH configuration
   block:
+    - name: Check if SSH config exists
+      stat:
+        path: /etc/ssh/sshd_config
+      register: ssh_config_exists
+
     - name: Backup original SSH config
       copy:
         src: /etc/ssh/sshd_config
@@ -81,6 +86,7 @@
         owner: root
         group: root
         mode: '0600'
+      when: ssh_config_exists.stat.exists
       become: true
 
     - name: Configure SSH security settings
@@ -89,6 +95,7 @@
         regexp: "{{ item.regexp }}"
         line: "{{ item.line }}"
         state: present
+      when: ssh_config_exists.stat.exists
       become: true
       loop:
         - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }

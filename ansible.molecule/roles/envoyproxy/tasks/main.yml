@@ -24,7 +24,7 @@
 
 - name: Add Envoy repository
   apt_repository:
-    repo: "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb {{ ansible_distribution_release }} stable"
+    repo: "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb jammy stable"
     state: present
   become: true
 

@@ -9,31 +9,43 @@ driver:
 
 platforms:
   - name: ubuntu-instance
-    image: quay.io/ansible/molecule-ubuntu:22.04
+    image: geerlingguy/docker-ubuntu2204-ansible
     pre_build_image: true
     privileged: true
-    command: /lib/systemd/systemd
+    tty: true
+    stdin_open: true
+    command: sleep infinity
+    cgroupns_mode: host
+    tmpfs:
+      - /tmp:rw,exec,mode=1777
+      - /run:rw,exec,mode=1777
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
-    cgroupns_mode: host
     networks:
       - name: molecule-network
-        ipv4_address: 172.20.0.10
 
 provisioner:
   name: ansible
+  connection_options:
+    ansible_connection: docker
   config_options:
     defaults:
       callbacks_enabled: profile_tasks, timer, yaml
       stdout_callback: yaml
       bin_ansible_callbacks: true
+      remote_tmp: /tmp
+      host_key_checking: False
+  env:
+    ANSIBLE_ROLES_PATH: ../../roles
   playbooks:
     converge: converge.yml
     verify: verify.yml
   inventory:
     host_vars:
       ubuntu-instance:
-        ansible_user: ansible
+        ansible_connection: docker
+        ansible_user: root
+        ansible_become: no
 
 verifier:
   name: ansible

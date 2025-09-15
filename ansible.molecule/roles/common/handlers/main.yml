@@ -19,6 +19,7 @@
     state: restarted
   become: true
   listen: restart ssh
+  when: ansible_service_mgr == "systemd" and ansible_facts['services']['ssh.service'] is defined
 
 - name: reload systemd
   systemd:
